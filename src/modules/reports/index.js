@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('./controller');
+const Controller = require('./controller');
 const auth = require('../../middleware/auth');
 const authorize = require('../../middleware/authorization');
 
-router.get('/sales', auth, authorize('admin'), controller.getSalesReport);
-router.get('/stocks', auth, authorize('admin'), controller.getStockReport);
-router.get('/profit', auth, authorize('admin'), controller.getProfitReport);
+router.get('/sales', auth, authorize('admin'), Controller.getSalesReport);
+router.get('/stocks', auth, authorize('admin'), Controller.getStockReport);
+router.get('/profit', auth, authorize('admin'), Controller.getProfitReport);
 
 module.exports = router;

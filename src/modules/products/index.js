@@ -5,15 +5,15 @@ const auth = require('../../middleware/auth');
 const authorize = require('../../middleware/authorization');
 const { validate } = require('../../utils/validation');
 const { createSchema, updateSchema } = require('./validation');
-const controller = require('./controller');
+const Controller = require('./controller');
 
 router.use(auth);
 
-router.get('/', controller.getAll);
-router.get('/barcode/:barcode', controller.getByBarcode);
-router.get('/:id', controller.getById);
-router.post('/', authorize('admin'), validate(createSchema), controller.create);
-router.put('/:id', authorize('admin'), validate(updateSchema), controller.update);
-router.delete('/:id', authorize('admin'), controller.remove);
+router.get('/', Controller.getAll);
+router.get('/barcode/:barcode', Controller.getByBarcode);
+router.get('/:id', Controller.getById);
+router.post('/', authorize('admin'), validate(createSchema), Controller.create);
+router.put('/:id', authorize('admin'), validate(updateSchema), Controller.update);
+router.delete('/:id', authorize('admin'), Controller.remove);
 
 module.exports = router;
