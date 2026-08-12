@@ -2,16 +2,14 @@ const { verifyToken } = require('../utils/jwt');
 
 const auth = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    let token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token tidak ditemukan'
-      });
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
     }
-
-    const token = authHeader.split(' ')[1];
 
     if (!token) {
       return res.status(401).json({

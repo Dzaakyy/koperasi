@@ -16,7 +16,7 @@ Sistem Informasi Koperasi merupakan aplikasi berbasis web yang digunakan untuk m
 
 ## Fitur Utama
 
-- **Authentication** — Login dengan JWT, role-based access (Admin & Kasir)
+- **Authentication** — Login dengan JWT disimpan dalam HTTP-Only Cookie, role-based access (Admin & Kasir)
 - **Manajemen Pengguna** — CRUD akun Kasir (Admin only)
 - **Manajemen Kategori** — CRUD kategori barang
 - **Manajemen Barang** — CRUD barang dengan barcode, harga modal, harga jual, diskon
@@ -142,7 +142,8 @@ Base URL: `http://localhost:3000/api`
 
 | Method | Endpoint | Akses | Deskripsi |
 |--------|----------|-------|-----------|
-| POST | `/auth/login` | Public | Login |
+| POST | `/auth/login` | Public | Login (Mengatur HttpOnly Cookie) |
+| POST | `/auth/logout` | Public | Logout (Menghapus Cookie) |
 
 ### Users
 
@@ -226,7 +227,6 @@ Content-Type: application/json
   "success": true,
   "message": "Login berhasil",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
     "user": {
       "id": 1,
       "name": "Administrator",
@@ -236,13 +236,14 @@ Content-Type: application/json
   }
 }
 ```
+*(Token disimpan secara otomatis di browser via HTTP-Only Cookie)*
 
 ### Buat Transaksi
 
 ```bash
 POST /api/transactions
-Authorization: Bearer <token_kasir>
 Content-Type: application/json
+Cookie: token=<token_jwt_anda>
 
 {
   "items": [
