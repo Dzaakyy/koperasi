@@ -1,6 +1,7 @@
 const { Product, StockHistory, User, sequelize } = require('../../../db/models');
 const { Op } = require('sequelize');
 
+// 1. Tambah Stok Masuk
 const addStock = async (data, userId) => {
   const t = await sequelize.transaction();
 
@@ -20,7 +21,7 @@ const addStock = async (data, userId) => {
         product_id: data.product_id,
         user_id: userId,
         quantity: data.quantity,
-        note: data.note || '',
+        note: data.note || 'Barang masuk dari supplier',
       },
       { transaction: t }
     );
@@ -37,6 +38,50 @@ const addStock = async (data, userId) => {
   }
 };
 
+// 2. Catat Barang Keluar (Rusak, Expired, Retur, dll)
+const reduceStock = async (data, userId) => {
+  const t = await sequelize.transaction();
+
+  try {
+    const product = await Product.findByPk(data.product_id, { transaction: t });
+    if (!product) {
+      const err = new Error('Barang tidak ditemukan');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (product.stock < data.quantity) {
+      const err = new Error(`Stok saat ini (${product.stock}) tidak mencukupi untuk dikeluarkan sebanyak ${data.quantity}`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const newStock = product.stock - data.quantity;
+    await product.update({ stock: newStock }, { transaction: t });
+
+    const stockHistory = await StockHistory.create(
+      {
+        product_id: data.product_id,
+        user_id: userId,
+        quantity: -Math.abs(data.quantity), // Disimpan minus agar terdata sebagai stok keluar
+        note: data.note || 'Pengeluaran Stok Manual',
+      },
+      { transaction: t }
+    );
+
+    await t.commit();
+
+    return {
+      product,
+      stockHistory,
+    };
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+};
+
+// 3. Ambil Riwayat Stok
 const getHistories = async (query = {}) => {
   const page = parseInt(query.page) || 1;
   const limit = parseInt(query.limit) || 10;
@@ -92,5 +137,6 @@ const getHistories = async (query = {}) => {
 
 module.exports = {
   addStock,
+  reduceStock,
   getHistories,
 };

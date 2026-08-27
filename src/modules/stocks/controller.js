@@ -11,6 +11,15 @@ class Controller {
     }
   }
 
+  static async reduceStock(req, res, next) {
+    try {
+      const result = await stockService.reduceStock(req.body, req.user.id);
+      return apiResponse.success(res, 'Barang keluar berhasil dicatat', result, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getHistories(req, res, next) {
     try {
       const result = await stockService.getHistories(req.query);
