@@ -1,5 +1,5 @@
-const { Product, Category } = require('../../../db/models');
-const { Op } = require('sequelize');
+const { Product, Category , StockHistory} = require("../../../db/models");
+const { Op } = require("sequelize");
 
 const getAll = async (query = {}) => {
   const page = parseInt(query.page) || 1;
@@ -15,13 +15,13 @@ const getAll = async (query = {}) => {
     ];
   }
 
-  if (query.category_id !== undefined && query.category_id !== '') {
+  if (query.category_id !== undefined && query.category_id !== "") {
     where.category_id = parseInt(query.category_id);
   }
 
-  if (query.status !== undefined && query.status !== '') {
-    if (typeof query.status === 'string') {
-      where.status = query.status === 'true';
+  if (query.status !== undefined && query.status !== "") {
+    if (typeof query.status === "string") {
+      where.status = query.status === "true";
     } else {
       where.status = Boolean(query.status);
     }
@@ -32,13 +32,13 @@ const getAll = async (query = {}) => {
     include: [
       {
         model: Category,
-        as: 'category',
-        attributes: ['id', 'name'],
+        as: "category",
+        attributes: ["id", "name"],
       },
     ],
     limit,
     offset,
-    order: [['createdAt', 'DESC']],
+    order: [["createdAt", "DESC"]],
     distinct: true,
   });
 
@@ -58,14 +58,14 @@ const getById = async (id) => {
     include: [
       {
         model: Category,
-        as: 'category',
-        attributes: ['id', 'name'],
+        as: "category",
+        attributes: ["id", "name"],
       },
     ],
   });
 
   if (!product) {
-    const err = new Error('Barang tidak ditemukan');
+    const err = new Error("Barang tidak ditemukan");
     err.statusCode = 404;
     throw err;
   }
@@ -79,14 +79,14 @@ const getByBarcode = async (barcode) => {
     include: [
       {
         model: Category,
-        as: 'category',
-        attributes: ['id', 'name'],
+        as: "category",
+        attributes: ["id", "name"],
       },
     ],
   });
 
   if (!product) {
-    const err = new Error('Barang dengan barcode tersebut tidak ditemukan');
+    const err = new Error("Barang dengan barcode tersebut tidak ditemukan");
     err.statusCode = 404;
     throw err;
   }
@@ -95,16 +95,18 @@ const getByBarcode = async (barcode) => {
 };
 
 const create = async (data) => {
-  const existingBarcode = await Product.findOne({ where: { barcode: data.barcode } });
+  const existingBarcode = await Product.findOne({
+    where: { barcode: data.barcode },
+  });
   if (existingBarcode) {
-    const err = new Error('Barcode sudah digunakan');
+    const err = new Error("Barcode sudah digunakan");
     err.statusCode = 409;
     throw err;
   }
 
   const category = await Category.findByPk(data.category_id);
   if (!category) {
-    const err = new Error('Kategori tidak ditemukan');
+    const err = new Error("Kategori tidak ditemukan");
     err.statusCode = 404;
     throw err;
   }
@@ -117,7 +119,7 @@ const create = async (data) => {
 const update = async (id, data) => {
   const product = await Product.findByPk(id);
   if (!product) {
-    const err = new Error('Barang tidak ditemukan');
+    const err = new Error("Barang tidak ditemukan");
     err.statusCode = 404;
     throw err;
   }
@@ -130,7 +132,7 @@ const update = async (id, data) => {
       },
     });
     if (existingBarcode) {
-      const err = new Error('Barcode sudah digunakan');
+      const err = new Error("Barcode sudah digunakan");
       err.statusCode = 409;
       throw err;
     }
@@ -139,7 +141,7 @@ const update = async (id, data) => {
   if (data.category_id && data.category_id !== product.category_id) {
     const category = await Category.findByPk(data.category_id);
     if (!category) {
-      const err = new Error('Kategori tidak ditemukan');
+      const err = new Error("Kategori tidak ditemukan");
       err.statusCode = 404;
       throw err;
     }
@@ -152,15 +154,26 @@ const update = async (id, data) => {
 
 const remove = async (id) => {
   const product = await Product.findByPk(id);
+
   if (!product) {
-    const err = new Error('Barang tidak ditemukan');
+    const err = new Error("Barang tidak ditemukan");
     err.statusCode = 404;
     throw err;
   }
 
-  await product.update({ status: false });
+  await StockHistory.destroy({
+    where: {
+      product_id: id,
+    },
+  });
 
-  return { message: 'Barang berhasil dinonaktifkan' };
+  await Product.destroy({
+    where: {
+      id: id,
+    },
+  });
+
+  return { message: "Barang berhasil dihapus secara permanen" };
 };
 
 module.exports = {

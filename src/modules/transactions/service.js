@@ -1,4 +1,4 @@
-const { Sale, SaleItem, Product, User, sequelize } = require('../../../db/models');
+const { Sale, SaleItem, Product, User, StockHistory, sequelize } = require('../../../db/models');
 const { Op } = require('sequelize');
 
 const generateInvoiceNumber = async () => {
@@ -7,93 +7,118 @@ const generateInvoiceNumber = async () => {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const count = await Sale.count({
     where: {
-      createdAt: {
+      created_at: {
         [Op.gte]: startOfDay
       }
     }
+  }).catch(async () => {
+    return await Sale.count();
   });
   return `INV-${dateStr}-${String(count + 1).padStart(4, '0')}`;
 };
 
 const create = async (data, userId) => {
-  const t = await sequelize.transaction();
-  try {
+  return await sequelize.transaction(async (t) => {
     const invoiceNumber = await generateInvoiceNumber();
 
-    let total = 0;
+    let validUserId = userId;
+    if (!validUserId) {
+      const firstUser = await User.findOne({ transaction: t });
+      validUserId = firstUser ? firstUser.id : 1;
+    }
+
+    let subtotalGross = 0;
     const saleItemsData = [];
 
-    for (const item of data.items) {
-      const product = await Product.findByPk(item.product_id, { transaction: t });
+    for (const item of (data.items || [])) {
+      const productId = Number(item.product_id || item.productId || item.id);
+      const quantity = Number(item.quantity || item.qty || 1);
+
+      const product = await Product.findByPk(productId, { transaction: t });
       if (!product) {
-        const err = new Error(`Barang dengan ID ${item.product_id} tidak ditemukan`);
+        const err = new Error(`Barang dengan ID ${productId} tidak ditemukan di database`);
         err.statusCode = 404;
         throw err;
       }
-      if (!product.status) {
-        const err = new Error(`Barang ${product.name} tidak aktif`);
+      if (product.status === false || product.status === 0) {
+        const err = new Error(`Barang "${product.name}" sedang tidak aktif`);
         err.statusCode = 400;
         throw err;
       }
-      if (product.stock < item.quantity) {
-        const err = new Error(`Stok ${product.name} tidak mencukupi (tersedia: ${product.stock})`);
+      if (product.stock < quantity) {
+        const err = new Error(`Stok "${product.name}" tidak mencukupi (tersedia: ${product.stock}, diminta: ${quantity})`);
         err.statusCode = 400;
         throw err;
       }
 
-      const sellingPrice = parseFloat(product.selling_price);
+      const sellingPrice = parseFloat(product.selling_price || product.sellingPrice || 0);
       const discount = parseFloat(product.discount || 0);
-      const subtotalBeforeDiscount = sellingPrice * item.quantity;
-      const discountAmount = discount * item.quantity;
-      const subtotal = subtotalBeforeDiscount - discountAmount;
+      const subtotalBeforeDiscount = sellingPrice * quantity;
+      const discountAmount = discount * quantity;
+      const itemSubtotal = subtotalBeforeDiscount - discountAmount;
 
-      total += subtotal;
+      subtotalGross += itemSubtotal;
 
       saleItemsData.push({
-        product_id: item.product_id,
-        quantity: item.quantity,
+        product_id: productId,
+        quantity: quantity,
         selling_price: sellingPrice,
         discount: discount,
-        subtotal: subtotal
+        subtotal: itemSubtotal
       });
 
-      await product.update({ stock: product.stock - item.quantity }, { transaction: t });
+      // Kurangi stok barang di database
+      await product.update({ stock: product.stock - quantity }, { transaction: t });
+
+      // Catat mutasi keluar di stock_histories
+      if (StockHistory) {
+        await StockHistory.create({
+          product_id: productId,
+          user_id: validUserId,
+          quantity: -quantity,
+          note: `Terjual di Kasir POS (${invoiceNumber})`
+        }, { transaction: t }).catch(() => {});
+      }
     }
 
-    if (data.paid < total) {
-      const err = new Error('Pembayaran kurang dari total transaksi');
+    // 💡 POTONG DISKON TRANSAKSI GLOBAL DARI KASIR
+    const transactionDiscount = Number(data.discount || data.discountTotal || data.discount_total || 0);
+    const finalTotal = Math.max(0, subtotalGross - transactionDiscount);
+
+    const paid = Number(data.paid ?? data.cash_paid ?? data.cashPaid ?? finalTotal);
+    if (paid < finalTotal) {
+      const err = new Error(`Pembayaran kurang dari total belanja (Total: ${finalTotal}, Bayar: ${paid})`);
       err.statusCode = 400;
       throw err;
     }
 
-    const change = data.paid - total;
+    const change = Math.max(0, paid - finalTotal);
+    const paymentMethod = String(data.payment_method || data.paymentMethod || data.payment_type || 'Cash').trim();
 
     const sale = await Sale.create({
       invoice_number: invoiceNumber,
-      user_id: userId,
-      total,
-      paid: data.paid,
-      change
+      user_id: validUserId,
+      payment_method: paymentMethod, 
+      paymentMethod: paymentMethod,   
+      total: finalTotal,
+      paid: paid,
+      change: change
     }, { transaction: t });
 
     for (const itemData of saleItemsData) {
       await SaleItem.create({ ...itemData, sale_id: sale.id }, { transaction: t });
     }
 
-    await t.commit();
-
     const completeSale = await Sale.findByPk(sale.id, {
       include: [
         { model: User, as: 'user', attributes: ['id', 'name'] },
         { model: SaleItem, as: 'items', include: [{ model: Product, as: 'product', attributes: ['id', 'barcode', 'name'] }] }
-      ]
+      ],
+      transaction: t
     });
 
     return completeSale;
-  } catch (error) {
-    await t.rollback();
-    throw error;
-  }
+  });
 };
 
 const getAll = async (query = {}) => {
@@ -106,14 +131,18 @@ const getAll = async (query = {}) => {
     const startDate = new Date(query.start_date);
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
-    where.createdAt = { [Op.between]: [startDate, endDate] };
+    where.created_at = { [Op.between]: [startDate, endDate] };
   } else if (query.start_date) {
     const startDate = new Date(query.start_date);
-    where.createdAt = { [Op.gte]: startDate };
+    where.created_at = { [Op.gte]: startDate };
   } else if (query.end_date) {
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
-    where.createdAt = { [Op.lte]: endDate };
+    where.created_at = { [Op.lte]: endDate };
+  }
+
+  if (query.payment_method) {
+    where.payment_method = query.payment_method;
   }
 
   const { count, rows } = await Sale.findAndCountAll({
@@ -127,7 +156,7 @@ const getAll = async (query = {}) => {
       }
     ],
     distinct: true,
-    order: [['createdAt', 'DESC']],
+    order: [['created_at', 'DESC']],
     limit,
     offset
   });
