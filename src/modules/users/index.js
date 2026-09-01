@@ -7,7 +7,7 @@ const auth = require('../../middleware/auth');
 const authorize = require('../../middleware/authorization');
 
 router.use(auth);
-router.use(authorize('admin'));
+router.use(authorize('super_admin'));
 
 router.get('/', Controller.getAll);
 router.get('/:id', Controller.getById);
