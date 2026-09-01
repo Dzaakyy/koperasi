@@ -90,6 +90,7 @@ Server berjalan di `http://localhost:3000`
 
 | Username | Password | Role |
 |----------|----------|------|
+| superadmin | superadmin123 | Super Admin |
 | admin | admin123 | Admin |
 
 ## Struktur Proyek
@@ -149,12 +150,12 @@ Base URL: `http://localhost:3000/api`
 
 | Method | Endpoint | Akses | Deskripsi |
 |--------|----------|-------|-----------|
-| GET | `/users` | Admin | Daftar pengguna |
-| GET | `/users/:id` | Admin | Detail pengguna |
-| POST | `/users` | Admin | Tambah pengguna |
-| PUT | `/users/:id` | Admin | Update pengguna |
-| PATCH | `/users/:id/password` | Admin | Ubah password |
-| DELETE | `/users/:id` | Admin | Hapus pengguna |
+| GET | `/users` | Super Admin | Daftar pengguna |
+| GET | `/users/:id` | Super Admin | Detail pengguna |
+| POST | `/users` | Super Admin | Tambah pengguna |
+| PUT | `/users/:id` | Super Admin | Update pengguna |
+| PATCH | `/users/:id/password` | Super Admin | Ubah password |
+| DELETE | `/users/:id` | Super Admin | Hapus pengguna |
 
 ### Categories
 

@@ -8,7 +8,7 @@ const { addStockSchema, reduceStockSchema } = require('./validation');
 const Controller = require('./controller');
 
 router.use(auth);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'super_admin'));
 
 router.post('/', validate(addStockSchema), Controller.addStock);
 router.post('/reduce', validate(reduceStockSchema), Controller.reduceStock);
