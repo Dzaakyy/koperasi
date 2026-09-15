@@ -129,16 +129,18 @@ const getAll = async (query = {}) => {
   const where = {};
   if (query.start_date && query.end_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
-    where.created_at = { [Op.between]: [startDate, endDate] };
+    where.createdAt = { [Op.between]: [startDate, endDate] };
   } else if (query.start_date) {
     const startDate = new Date(query.start_date);
-    where.created_at = { [Op.gte]: startDate };
+    startDate.setHours(0, 0, 0, 0);
+    where.createdAt = { [Op.gte]: startDate };
   } else if (query.end_date) {
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
-    where.created_at = { [Op.lte]: endDate };
+    where.createdAt = { [Op.lte]: endDate };
   }
 
   if (query.payment_method) {
@@ -156,7 +158,7 @@ const getAll = async (query = {}) => {
       }
     ],
     distinct: true,
-    order: [['created_at', 'DESC']],
+    order: [['createdAt', 'DESC']],
     limit,
     offset
   });

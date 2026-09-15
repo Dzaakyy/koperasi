@@ -5,11 +5,13 @@ const getSalesReport = async (query = {}) => {
   const where = {};
   if (query.start_date && query.end_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
     where.createdAt = { [Op.between]: [startDate, endDate] };
   } else if (query.start_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     where.createdAt = { [Op.gte]: startDate };
   } else if (query.end_date) {
     const endDate = new Date(query.end_date);
@@ -56,11 +58,13 @@ const getStockReport = async (query = {}) => {
   const where = {};
   if (query.start_date && query.end_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
     where.createdAt = { [Op.between]: [startDate, endDate] };
   } else if (query.start_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     where.createdAt = { [Op.gte]: startDate };
   } else if (query.end_date) {
     const endDate = new Date(query.end_date);
@@ -99,11 +103,13 @@ const getProfitReport = async (query = {}) => {
   const saleWhere = {};
   if (query.start_date && query.end_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(query.end_date);
     endDate.setHours(23, 59, 59, 999);
     saleWhere.createdAt = { [Op.between]: [startDate, endDate] };
   } else if (query.start_date) {
     const startDate = new Date(query.start_date);
+    startDate.setHours(0, 0, 0, 0);
     saleWhere.createdAt = { [Op.gte]: startDate };
   } else if (query.end_date) {
     const endDate = new Date(query.end_date);
