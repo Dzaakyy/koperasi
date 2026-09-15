@@ -12,3 +12,4 @@ router.post('/reduce', auth, authorize('admin', 'super_admin'), validate(reduceS
 router.get('/histories', auth, authorize('admin', 'super_admin', 'kasir'), Controller.getHistories);
 
 module.exports = router;
+
