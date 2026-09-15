@@ -7,7 +7,7 @@ const auth = require('../../middleware/auth');
 const authorize = require('../../middleware/authorization');
 
 router.post('/', auth, authorize('kasir'), validate(createSchema), Controller.create);
-router.get('/', auth, authorize('admin', 'super_admin'), Controller.getAll);
-router.get('/:id', auth, Controller.getById);
+router.get('/', auth, authorize('admin', 'kasir' ,'super_admin'), Controller.getAll);
+router.get('/:id', auth, authorize('admin', 'kasir' ,'super_admin'), Controller.getById);
 
 module.exports = router;
