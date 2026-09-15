@@ -1,5 +1,6 @@
 const { Product, StockHistory, User, sequelize } = require('../../../db/models');
 const { Op } = require('sequelize');
+const { parseDateRange } = require('../../utils/date');
 
 // 1. Tambah Stok Masuk
 const addStock = async (data, userId) => {
@@ -93,15 +94,13 @@ const getHistories = async (query = {}) => {
     where.product_id = parseInt(query.product_id);
   }
 
-  if (query.start_date && query.end_date) {
-    const startDate = new Date(query.start_date);
-    const endDate = new Date(query.end_date);
-    if (query.end_date.length <= 10) {
-      endDate.setHours(23, 59, 59, 999);
-    }
-    where.createdAt = {
-      [Op.between]: [startDate, endDate],
-    };
+  const { startDate, endDate } = parseDateRange(query.start_date, query.end_date);
+  if (startDate && endDate) {
+    where.created_at = { [Op.between]: [startDate, endDate] };
+  } else if (startDate) {
+    where.created_at = { [Op.gte]: startDate };
+  } else if (endDate) {
+    where.created_at = { [Op.lte]: endDate };
   }
 
   const { count, rows } = await StockHistory.findAndCountAll({
@@ -120,7 +119,7 @@ const getHistories = async (query = {}) => {
     ],
     limit,
     offset,
-    order: [['createdAt', 'DESC']],
+    order: [['created_at', 'DESC']],
     distinct: true,
   });
 

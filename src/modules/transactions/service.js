@@ -1,10 +1,10 @@
 const { Sale, SaleItem, Product, User, StockHistory, sequelize } = require('../../../db/models');
 const { Op } = require('sequelize');
+const { parseDateRange, getInvoiceDateStringWIB, getStartOfDayWIB } = require('../../utils/date');
 
 const generateInvoiceNumber = async () => {
-  const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dateStr = getInvoiceDateStringWIB();
+  const startOfDay = getStartOfDayWIB();
   const count = await Sale.count({
     where: {
       created_at: {
@@ -121,28 +121,31 @@ const create = async (data, userId) => {
   });
 };
 
-const getAll = async (query = {}) => {
+const getAll = async (query = {}, user = null) => {
   const page = parseInt(query.page) || 1;
   const limit = parseInt(query.limit) || 10;
   const offset = (page - 1) * limit;
 
   const where = {};
-  if (query.start_date && query.end_date) {
-    const startDate = new Date(query.start_date);
-    const endDate = new Date(query.end_date);
-    endDate.setHours(23, 59, 59, 999);
+  const { startDate, endDate } = parseDateRange(query.start_date, query.end_date);
+
+  if (startDate && endDate) {
     where.created_at = { [Op.between]: [startDate, endDate] };
-  } else if (query.start_date) {
-    const startDate = new Date(query.start_date);
+  } else if (startDate) {
     where.created_at = { [Op.gte]: startDate };
-  } else if (query.end_date) {
-    const endDate = new Date(query.end_date);
-    endDate.setHours(23, 59, 59, 999);
+  } else if (endDate) {
     where.created_at = { [Op.lte]: endDate };
   }
 
   if (query.payment_method) {
     where.payment_method = query.payment_method;
+  }
+
+  const cashierId = query.cashier_id || query.user_id || query.userId;
+  if (cashierId) {
+    where.user_id = parseInt(cashierId);
+  } else if (user && user.role === 'kasir') {
+    where.user_id = user.id;
   }
 
   const { count, rows } = await Sale.findAndCountAll({

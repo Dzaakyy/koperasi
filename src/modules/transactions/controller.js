@@ -13,7 +13,7 @@ class Controller {
 
   static async getAll(req, res, next) {
     try {
-      const result = await service.getAll(req.query);
+      const result = await service.getAll(req.query, req.user);
       return apiResponse.pagination(res, 'Data transaksi berhasil diambil', result.sales, result.pagination);
     } catch (error) {
       next(error);
