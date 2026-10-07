@@ -28,6 +28,14 @@ class Controller {
       next(error);
     }
   }
+  static async deleteHistory(req, res, next) {
+    try {
+      await stockService.deleteHistory(req.params.id);
+      return apiResponse.success(res, 'Riwayat mutasi stok berhasil dihapus dan stok dikembalikan');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = Controller;

@@ -135,8 +135,42 @@ const getHistories = async (query = {}) => {
   };
 };
 
+// 4. Hapus Riwayat Stok Manual (Batal Mutasi)
+const deleteHistory = async (id) => {
+  const t = await sequelize.transaction();
+  try {
+    const history = await StockHistory.findByPk(id, { transaction: t });
+    if (!history) {
+      const err = new Error('Data riwayat stok tidak ditemukan');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (history.note && history.note.includes('Terjual di Kasir POS')) {
+      const err = new Error('Tidak bisa menghapus mutasi stok kasir dari sini. Silakan hapus di Riwayat Transaksi.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const product = await Product.findByPk(history.product_id, { transaction: t });
+    if (product) {
+      // Restore stock: If history was -4 (out), we subtract -4 (meaning +4). If history was +10, we subtract +10.
+      const restoredStock = product.stock - history.quantity;
+      await product.update({ stock: restoredStock }, { transaction: t });
+    }
+
+    await history.destroy({ transaction: t });
+    await t.commit();
+    return true;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+};
+
 module.exports = {
   addStock,
   reduceStock,
   getHistories,
+  deleteHistory,
 };

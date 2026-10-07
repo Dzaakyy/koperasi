@@ -10,5 +10,6 @@ const Controller = require('./controller');
 router.post('/', auth, authorize('admin', 'super_admin'), validate(addStockSchema), Controller.addStock);
 router.post('/reduce', auth, authorize('admin', 'super_admin'), validate(reduceStockSchema), Controller.reduceStock);
 router.get('/histories', auth, authorize('admin', 'super_admin', 'kasir'), Controller.getHistories);
+router.delete('/histories/:id', auth, authorize('admin', 'super_admin'), Controller.deleteHistory);
 
 module.exports = router;
