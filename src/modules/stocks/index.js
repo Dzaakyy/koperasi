@@ -13,3 +13,4 @@ router.get('/histories', auth, authorize('admin', 'super_admin', 'kasir'), Contr
 router.delete('/histories/:id', auth, authorize('admin', 'super_admin'), Controller.deleteHistory);
 
 module.exports = router;
+
